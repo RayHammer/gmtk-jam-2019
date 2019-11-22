@@ -6,24 +6,38 @@ public class NetRequestSender : MonoBehaviour
 {
     public bool debugMode = false;
 
+    public NetRequestStatus Status
+    {
+        get => status;
+    }
+
+    public bool Finished()
+    {
+        return status == NetRequestStatus.Error
+            || status == NetRequestStatus.Success;
+    }
+
     protected IEnumerator GetRequest(string uri)
     {
+        status = NetRequestStatus.Running;
         UnityWebRequest webRequest = UnityWebRequest.Get(uri);
         yield return webRequest.SendWebRequest();
 
-        DebugLogNetworkRequest(webRequest);
+        ProcessNetworkRequest(webRequest);
     }
 
     protected IEnumerator PostRequest(string url, WWWForm form)
     {
+        status = NetRequestStatus.Running;
         UnityWebRequest webRequest = UnityWebRequest.Post(url, form);
         yield return webRequest.SendWebRequest();
 
-        DebugLogNetworkRequest(webRequest);
+        ProcessNetworkRequest(webRequest);
     }
 
     protected IEnumerator PostRequestJson(string url, string json)
     {
+        status = NetRequestStatus.Running;
         var webRequest = new UnityWebRequest(url, "POST");
         byte[] jsonToSend = new System.Text.UTF8Encoding().GetBytes(json);
         webRequest.uploadHandler = (UploadHandler)new UploadHandlerRaw(jsonToSend);
@@ -32,20 +46,32 @@ public class NetRequestSender : MonoBehaviour
 
         yield return webRequest.SendWebRequest();
 
-        DebugLogNetworkRequest(webRequest);
+        ProcessNetworkRequest(webRequest);
     }
 
-    private void DebugLogNetworkRequest(UnityWebRequest webRequest)
+    private void ProcessNetworkRequest(UnityWebRequest webRequest)
     {
-        if (!debugMode) return;
-
         if (webRequest.isNetworkError || webRequest.isHttpError)
         {
-            Debug.Log("Error: " + webRequest.error);
+            status = NetRequestStatus.Error;
+            if (debugMode) 
+                Debug.Log("Error: " + webRequest.error);
         }
         else
         {
-            Debug.Log("Received: " + webRequest.downloadHandler.text);
+            status = NetRequestStatus.Success;
+            if (debugMode) 
+                Debug.Log("Received: " + webRequest.downloadHandler.text);
         }
     }
+
+    protected NetRequestStatus status = NetRequestStatus.Idle;
+}
+
+public enum NetRequestStatus
+{
+    Idle,
+    Running,
+    Success,
+    Error
 }
