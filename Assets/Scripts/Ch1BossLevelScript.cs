@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using UnityEngine.SceneManagement;
 
 public class Ch1BossLevelScript : MonoBehaviour
 {
@@ -21,6 +22,7 @@ public class Ch1BossLevelScript : MonoBehaviour
         PHASE1,
         PHASE2,
         PHASE4,
+        DEAD
     }
 
     // Start is called before the first frame update
@@ -60,6 +62,9 @@ public class Ch1BossLevelScript : MonoBehaviour
             case Phase.PHASE4:
                 UpdatePhase4();
                 break;
+            case Phase.DEAD:
+                UpdateDead();
+                break;
             default:
                 break;
         }
@@ -67,6 +72,7 @@ public class Ch1BossLevelScript : MonoBehaviour
 
     public void StartFight()
     {
+        Pause.AllowPause = false;
         CurrentPhase = Phase.PRE_PHASE1;
         Instantiate(bossSpawnEffect, new Vector3(0, 16.5f, 0), Quaternion.identity);
     }
@@ -165,10 +171,6 @@ public class Ch1BossLevelScript : MonoBehaviour
         switch (Phase1CurrentAttack)
         {
             case Phase1Attack.IDLE:
-                BossRoomEntrance.gameObject.SetActive(true);
-                BossRoomEntrance.color = new Color(
-                    BossRoomEntrance.color.r, BossRoomEntrance.color.g, BossRoomEntrance.color.b,
-                    Mathf.Lerp(0, 1, Phase1TimeElapsed / Phase1IdleTime));
                 if (Phase1TimeElapsed > Phase1IdleTime)
                 {
                     Phase1CurrentAttack = Phase1Attack.MoveExplode;
@@ -251,6 +253,10 @@ public class Ch1BossLevelScript : MonoBehaviour
     {
         timeElapsed = 0;
         phasePre1TimeToBossSpawn -= Time.deltaTime;
+        BossRoomEntrance.gameObject.SetActive(true);
+        BossRoomEntrance.color = new Color(
+            BossRoomEntrance.color.r, BossRoomEntrance.color.g, BossRoomEntrance.color.b,
+            Mathf.Lerp(1, 0, phasePre1TimeToBossSpawn / 2));
         if (phasePre1TimeToBossSpawn <= 0)
         {
             StartPhase1();
@@ -269,7 +275,7 @@ public class Ch1BossLevelScript : MonoBehaviour
     private Phase2Attack Phase2CurrentAttack;
     private float GlassStartDuration = 1.5f;
     private float GlassStartTimePassed;
-    private float GlassFadeOutDuration = 0.5f;
+    private float GlassFadeOutDuration = 1f;
     private float GlassFadeOutPassed;
     [SerializeField]
     private SpawnZoneScript leftSpawnZone = null;
@@ -335,9 +341,13 @@ public class Ch1BossLevelScript : MonoBehaviour
                 break;
             case Phase2Attack.GlassFade:
                 GlassFadeOutPassed += Time.deltaTime;
-                GlassSprite.color = new Color(
-                    GlassSprite.color.r, GlassSprite.color.g, GlassSprite.color.b,
-                    Mathf.Lerp(0.5f, 0, GlassFadeOutPassed / GlassFadeOutDuration));
+                if (GlassFadeOutPassed < GlassFadeOutDuration)
+                {
+                    GlassSprite.color = new Color(
+                        GlassSprite.color.r, GlassSprite.color.g, GlassSprite.color.b,
+                        Mathf.Lerp(0.5f, 1, GlassFadeOutPassed / GlassFadeOutDuration));
+                }
+                
                 if (GlassFadeOutPassed / GlassFadeOutDuration > 1)
                 {
                     StartPhase4();
@@ -379,7 +389,6 @@ public class Ch1BossLevelScript : MonoBehaviour
         CurrentPhase = Phase.PHASE4;
         phase4Attack = Phase4Attack.Idle;
         phase4SpawnPosition = Phase4CalculateSpawnPosition();
-        CurrentEnemy.SetCurrentEnemyName("Shadow");
         
         Player.GetComponentInChildren<TMPro.TextMeshPro>().text = "Hero";
         var bossName = BossInstance.GetComponentInChildren<TMPro.TextMeshPro>();
@@ -393,16 +402,28 @@ public class Ch1BossLevelScript : MonoBehaviour
         bossScript = BossInstance.GetComponent<MonsterLife>();
         bossScript.FadeIn(phase4FadeIn);
         bossScript.MakeBoy();
+
+        GlassFadeOutDuration = GlassFadeOutDuration / 3;
+        GlassFadeOutPassed = 0;
     }
 
     private void UpdatePhase4()
     {
+        GlassFadeOutPassed += Time.deltaTime;
+        GlassSprite.color = new Color(
+            GlassSprite.color.r, GlassSprite.color.g, GlassSprite.color.b,
+            Mathf.Lerp(1, 0, GlassFadeOutPassed / GlassFadeOutDuration));
+
         if (BossInstance == null)
         {
+            StartDead();
             CurrentEnemy.SetCurrentEnemyName(" ");
             return;
         }
-        CurrentEnemy.SetCurrentEnemyName("Shadow");
+        if (ArenaEnemySpawner.boysList.Count == 0)
+        {
+            CurrentEnemy.SetCurrentEnemyName("Shadow");
+        }
         switch (phase4Attack)
         {
             case Phase4Attack.Idle:
@@ -455,6 +476,26 @@ public class Ch1BossLevelScript : MonoBehaviour
             var bullet = Instantiate(BossBulletMiddle, BossInstance.transform.position,
                 Quaternion.Euler(new Vector3(0, 0, Random.Range(0, 360))));
             bullet.GetComponent<EnemyBulletLife>().BulletSpeed = Random.Range(BulletSpeedRange.x, BulletSpeedRange.y);
+        }
+    }
+
+    private void StartDead()
+    {
+        GlassStartDuration = 3;
+        GlassStartTimePassed = 0;
+        CurrentPhase = Phase.DEAD;
+    }
+
+    [SerializeField]
+    private string NextSceneName = "FinalCredits";
+
+    private void UpdateDead()
+    {
+        GlassStartTimePassed += Time.deltaTime;
+        GlassSprite.color = new Color(0, 0, 0, Mathf.Lerp(0, 1, GlassStartTimePassed / GlassStartDuration));
+        if (GlassStartTimePassed / GlassStartDuration > 1)
+        {
+            SceneManager.LoadScene(NextSceneName);
         }
     }
 }

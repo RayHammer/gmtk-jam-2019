@@ -48,26 +48,9 @@ public class RelodScene : MonoBehaviour
         Reload();
     }
 
-    protected virtual void Victory()
+    protected virtual void ProcessVictory()
     {
-        if (isPointVictory)
-        {
-            if (TotalValue >= pointsToVictory)
-            {
-                ConfirmedVictory();
-            }
-        }
-        else
-        {
-            if (TotalValue >= maxvalue)
-            {
-                ConfirmedVictory();
-            }
-        }
-    }
-
-    protected virtual void ConfirmedVictory()
-    {
+        CurrentEnemy.SetCurrentEnemyName(" ");
         isVictory = true;
         Canvas.transform.GetChild(0).gameObject.SetActive(true);
         if (ContinueButtonPressed || Input.GetKeyDown(KeyCode.F) && !CharacterLife.isDeath)
@@ -78,6 +61,24 @@ public class RelodScene : MonoBehaviour
                 SceneManager.LoadScene(NextSceneName);
             }
             ContinueButtonPressed = true;
+        }
+    }
+
+    protected virtual void Victory()
+    {
+        if (isPointVictory)
+        {
+            if (TotalValue >= pointsToVictory)
+            {
+                ProcessVictory();
+            }
+        }
+        else
+        {
+            if (TotalValue >= maxvalue)
+            {
+                ProcessVictory();
+            }
         }
     }
 
