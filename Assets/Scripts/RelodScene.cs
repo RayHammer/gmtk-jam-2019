@@ -23,6 +23,7 @@ public class RelodScene : MonoBehaviour
 
     protected virtual void Awake()
     {
+        statSender = GetComponent<StatSender>();
         ArenaEnemySpawner spawn = GetComponent<ArenaEnemySpawner>();
         CharacterLife.isDeath = false;
         Canvas = GameObject.FindGameObjectWithTag("Canvas");
@@ -31,6 +32,8 @@ public class RelodScene : MonoBehaviour
 
         Canvas.transform.GetChild(0).gameObject.SetActive(false);
         isVictory = false;
+        ContinueButtonPressed = false;
+        RestartButtonPressed = false;
         PlayerPrefs.SetInt("CurrentScene", SceneManager.GetActiveScene().buildIndex);
     }
 
@@ -51,38 +54,45 @@ public class RelodScene : MonoBehaviour
         {
             if (TotalValue >= pointsToVictory)
             {
-                isVictory = true;
-                Canvas.transform.GetChild(0).gameObject.SetActive(true);
-                if (Input.GetKeyDown(KeyCode.F) && !CharacterLife.isDeath)
-                {
-                    Canvas.transform.GetChild(0).gameObject.SetActive(false);
-                    SceneManager.LoadScene(NextSceneName);
-                }
+                ConfirmedVictory();
             }
         }
         else
         {
             if (TotalValue >= maxvalue)
             {
-                isVictory = true;
-                Canvas.transform.GetChild(0).gameObject.SetActive(true);
-                if (Input.GetKeyDown(KeyCode.F) && !CharacterLife.isDeath)
-                {
-                    Canvas.transform.GetChild(0).gameObject.SetActive (false);
-                    SceneManager.LoadScene(NextSceneName);
-                }
+                ConfirmedVictory();
             }
+        }
+    }
+
+    protected virtual void ConfirmedVictory()
+    {
+        isVictory = true;
+        Canvas.transform.GetChild(0).gameObject.SetActive(true);
+        if (ContinueButtonPressed || Input.GetKeyDown(KeyCode.F) && !CharacterLife.isDeath)
+        {
+            if (statSender == null || statSender.Finished())
+            {
+                Canvas.transform.GetChild(0).gameObject.SetActive(false);
+                SceneManager.LoadScene(NextSceneName);
+            }
+            ContinueButtonPressed = true;
         }
     }
 
     protected virtual void Reload()
     {
-        if (Input.GetKeyDown(KeyCode.R) && (!isVictory || CharacterLife.isDeath))
+        if (RestartButtonPressed || Input.GetKeyDown(KeyCode.R) && (!isVictory || CharacterLife.isDeath))
         {
-            TotalValue = 0;
-            Time.timeScale = 1;
-            Canvas.transform.GetChild(1).gameObject.SetActive(false);
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            if (statSender == null || statSender.Finished())
+            {
+                TotalValue = 0;
+                Time.timeScale = 1;
+                Canvas.transform.GetChild(1).gameObject.SetActive(false);
+                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            }
+            RestartButtonPressed = true;
         }
     }
 
@@ -91,6 +101,10 @@ public class RelodScene : MonoBehaviour
         if (isVictory && !CharacterLife.isDeath) return;
         Canvas.transform.GetChild(1).gameObject.SetActive(true);
     }
+
+    private NetRequestSender statSender;
+    private bool ContinueButtonPressed;
+    private bool RestartButtonPressed;
 }
 
 /*[CustomEditor(typeof(RelodScene))]
